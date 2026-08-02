@@ -1,0 +1,5 @@
+{
+  "name": "AKM Pharma and Surgicals",
+  "description": "A web portal for AKM Pharma and Surgicals, allowing customers to place orders and the owner to manage products and view order history. This application is designed for wholesale distribution.",
+  "requestFramePermissions": []
+}
