@@ -2,7 +2,7 @@ import React, { createContext, useState, ReactNode, useCallback, useEffect } fro
 import useLocalStorage from '../hooks/useLocalStorage';
 import { User, Product, Order, CartItem, Customer, DbNotification } from '../types';
 
-const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://akm-pharma-surgical-api.onrender.com';
 
 type UnitType = 'Strip' | 'Box' | 'Piece';
 

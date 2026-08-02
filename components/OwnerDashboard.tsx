@@ -6,7 +6,7 @@ import { UploadIcon, UserIcon } from './Icons';
 import useLocalStorage from '../hooks/useLocalStorage';
 import * as XLSX from 'xlsx';
 
-const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : '';
+const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://akm-pharma-surgical-api.onrender.com';
 
 const OwnerDashboard: React.FC = () => {
   const context = useContext(AppContext);

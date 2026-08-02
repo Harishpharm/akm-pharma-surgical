@@ -32,7 +32,7 @@ const Login: React.FC = () => {
   if (!context) return null;
   const { login } = context;
 
-  const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : '';
+  const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://akm-pharma-surgical-api.onrender.com';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
