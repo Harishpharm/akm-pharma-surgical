@@ -43,55 +43,9 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        return;
-      }
-
-      console.log("Downloading CSV catalogue, product count:", products?.length);
-      
-      const escapeCsv = (val: any) => {
-        const stringVal = String(val === null || val === undefined ? '' : val);
-        if (/[",\r\n]/.test(stringVal)) {
-          return `"${stringVal.replace(/"/g, '""')}"`;
-        }
-        return stringVal;
-      };
-
-      const headers = ['Code/SKU', 'Name', 'Manufacturer', 'Category', 'MRP', 'Price', 'Stock'];
-      
-      let csvContent = "";
-      if (!products || products.length === 0) {
-        const confirmDownload = confirm("No products found in the database. Would you like to download the CSV template format to start adding items?");
-        if (!confirmDownload) return;
-        
-        const sampleRow = ['AKM-101', 'Paracetamol 650mg', 'Cipla', 'General', '20.00', '15.50', '100'];
-        csvContent = headers.join(',') + '\r\n' + sampleRow.map(escapeCsv).join(',');
       } else {
-        const rows = products.map(p => {
-          return [
-            escapeCsv(p.code || p.id),
-            escapeCsv(p.name),
-            escapeCsv(p.manufacturer || 'AKM Pharma'),
-            escapeCsv(p.category || 'General'),
-            escapeCsv(p.mrp || p.price || 0),
-            escapeCsv(p.price || 0),
-            escapeCsv(p.stock || 0)
-          ].join(',');
-        });
-        csvContent = headers.join(',') + '\r\n' + rows.join('\r\n');
+        alert("No PDF catalogue uploaded by the admin yet.");
       }
-
-      // Ensure CSV ends with a newline for Excel compatibility
-      const finalCsv = csvContent.endsWith('\r\n') ? csvContent : csvContent + '\r\n';
-      const blob = new Blob(["\uFEFF", finalCsv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = "AKM_Pharma_Stock.csv";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      console.log("Download triggered.");
     } catch (error) {
       console.error("Error downloading catalogue:", error);
     }

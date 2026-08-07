@@ -137,13 +137,4 @@ VALUES
     ('catalog_file_url', '')
 ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value;
 
--- 9. NOTIFICATIONS TABLE
-CREATE TABLE IF NOT EXISTS notifications (
-    id VARCHAR(64) PRIMARY KEY,
-    title VARCHAR(150) NOT NULL,
-    message TEXT NOT NULL,
-    type VARCHAR(50) NOT NULL,
-    read BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications (read);
+
