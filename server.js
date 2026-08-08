@@ -121,34 +121,41 @@ app.get('/api/health', async (req, res) => {
 // ------------------------------------------------------------------------------
 
 app.post('/api/catalog/upload', async (req, res) => {
-  const { catalogBase64 } = req.body;
-  if (!catalogBase64) return res.status(400).json({ error: 'No catalog data provided.' });
-  
+  const { catalogBase64, fileName, fileType } = req.body;
   try {
-    const { error } = await supabase
-      .from('system_settings')
-      .upsert({ setting_key: 'catalog_pdf_data', setting_value: catalogBase64 }, { onConflict: 'setting_key' });
-    if (error) throw error;
-    res.json({ success: true, message: 'Catalog uploaded successfully.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (catalogBase64) {
+      await supabase.from('system_settings').upsert({ setting_key: 'catalog_base64', setting_value: catalogBase64 }, { onConflict: 'setting_key' });
+      await supabase.from('system_settings').upsert({ setting_key: 'catalog_file_name', setting_value: fileName || 'AKM_Pharma_Catalog.pdf' }, { onConflict: 'setting_key' });
+      await supabase.from('system_settings').upsert({ setting_key: 'catalog_file_type', setting_value: fileType || 'application/pdf' }, { onConflict: 'setting_key' });
+    } else {
+      await supabase.from('system_settings').delete().eq('setting_key', 'catalog_base64');
+      await supabase.from('system_settings').delete().eq('setting_key', 'catalog_file_name');
+      await supabase.from('system_settings').delete().eq('setting_key', 'catalog_file_type');
+    }
+    res.json({ success: true, message: 'Catalogue document updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
 app.get('/api/catalog/download', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('setting_value')
-      .eq('setting_key', 'catalog_pdf_data')
-      .single();
-      
-    if (error) throw error;
-    if (!data || !data.setting_value) return res.status(404).json({ error: 'Catalog not found.' });
-    
-    res.json({ success: true, catalogBase64: data.setting_value });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const { data: base64Data } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_base64').maybeSingle();
+    const { data: nameData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_name').maybeSingle();
+    const { data: typeData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_type').maybeSingle();
+
+    if (!base64Data || !base64Data.setting_value) {
+      return res.status(404).json({ error: 'Catalog not found.' });
+    }
+
+    res.json({
+      success: true,
+      catalogBase64: base64Data.setting_value,
+      fileName: nameData?.setting_value || 'AKM_Pharma_Catalog.pdf',
+      fileType: typeData?.setting_value || 'application/pdf'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -1052,40 +1059,7 @@ app.post('/api/notifications/clear', async (req, res) => {
   }
 });
 
-app.post('/api/catalog/upload', async (req, res) => {
-  const { catalogBase64, fileName, fileType } = req.body;
-  try {
-    if (catalogBase64) {
-      await supabase.from('settings').upsert({ key: 'catalog_base64', value: catalogBase64 });
-      await supabase.from('settings').upsert({ key: 'catalog_file_name', value: fileName || 'AKM_Pharma_Catalog.pdf' });
-      await supabase.from('settings').upsert({ key: 'catalog_file_type', value: fileType || 'application/pdf' });
-    } else {
-      await supabase.from('settings').delete().eq('key', 'catalog_base64');
-      await supabase.from('settings').delete().eq('key', 'catalog_file_name');
-      await supabase.from('settings').delete().eq('key', 'catalog_file_type');
-    }
-    res.json({ success: true, message: 'Catalogue document updated successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
-app.get('/api/catalog/download', async (req, res) => {
-  try {
-    const { data: base64Data } = await supabase.from('settings').select('value').eq('key', 'catalog_base64').single();
-    const { data: nameData } = await supabase.from('settings').select('value').eq('key', 'catalog_file_name').single();
-    const { data: typeData } = await supabase.from('settings').select('value').eq('key', 'catalog_file_type').single();
-
-    res.json({
-      success: true,
-      catalogBase64: base64Data?.value || null,
-      fileName: nameData?.value || 'AKM_Pharma_Catalog.pdf',
-      fileType: typeData?.value || 'application/pdf'
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Database Initialization Function
 const initializeDatabase = async () => {
