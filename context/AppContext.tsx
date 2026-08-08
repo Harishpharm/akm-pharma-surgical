@@ -66,41 +66,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const refreshAllData = useCallback(async () => {
     try {
-      // 1. Fetch settings
-      const sRes = await fetch(`${API_URL}/api/settings`);
-      if (sRes.ok) {
-        const settings = await sRes.json();
-        if (settings.google_sheet_id) setGoogleSheetIdState(settings.google_sheet_id);
-        if (settings.google_script_url) setGoogleScriptUrlState(settings.google_script_url);
-        if (settings.low_stock_threshold) setLowStockThresholdState(parseInt(settings.low_stock_threshold) || 10);
-      }
-
-      // 2. Fetch products
-      const pRes = await fetch(`${API_URL}/api/products`);
-      if (pRes.ok) setProducts(await pRes.json());
-
-      // 3. Fetch customers
-      const cRes = await fetch(`${API_URL}/api/customers`);
-      if (cRes.ok) setCustomers(await cRes.json());
-
-      // 4. Fetch orders
-      const oRes = await fetch(`${API_URL}/api/orders`);
-      if (oRes.ok) setOrders(await oRes.json());
-
-      // 5. Fetch catalogue
-      const catRes = await fetch(`${API_URL}/api/catalog/download`);
-      if (catRes.ok) {
-        const catData = await catRes.json();
-        if (catData.success && catData.catalogBase64) {
-          setCatalogueDataState(catData.catalogBase64);
-          if (catData.fileName) setCatalogueFileNameState(catData.fileName);
-          if (catData.fileType) setCatalogueFileTypeState(catData.fileType);
+      const fetchSettings = fetch(`${API_URL}/api/settings`).then(async (res) => {
+        if (res.ok) {
+          const settings = await res.json();
+          if (settings.google_sheet_id) setGoogleSheetIdState(settings.google_sheet_id);
+          if (settings.google_script_url) setGoogleScriptUrlState(settings.google_script_url);
+          if (settings.low_stock_threshold) setLowStockThresholdState(parseInt(settings.low_stock_threshold) || 10);
         }
-      }
+      }).catch(console.error);
 
-      // 6. Fetch notifications
-      const nRes = await fetch(`${API_URL}/api/notifications`);
-      if (nRes.ok) setNotifications(await nRes.json());
+      const fetchProducts = fetch(`${API_URL}/api/products`).then(async (res) => {
+        if (res.ok) setProducts(await res.json());
+      }).catch(console.error);
+
+      const fetchCustomers = fetch(`${API_URL}/api/customers`).then(async (res) => {
+        if (res.ok) setCustomers(await res.json());
+      }).catch(console.error);
+
+      const fetchOrders = fetch(`${API_URL}/api/orders`).then(async (res) => {
+        if (res.ok) setOrders(await res.json());
+      }).catch(console.error);
+
+      const fetchCatalogue = fetch(`${API_URL}/api/catalog/download`).then(async (res) => {
+        if (res.ok) {
+          const catData = await res.json();
+          if (catData.success && catData.catalogBase64) {
+            setCatalogueDataState(catData.catalogBase64);
+            if (catData.fileName) setCatalogueFileNameState(catData.fileName);
+            if (catData.fileType) setCatalogueFileTypeState(catData.fileType);
+          }
+        }
+      }).catch(console.error);
+
+      const fetchNotifications = fetch(`${API_URL}/api/notifications`).then(async (res) => {
+        if (res.ok) setNotifications(await res.json());
+      }).catch(console.error);
+
+      await Promise.all([fetchSettings, fetchProducts, fetchCustomers, fetchOrders, fetchCatalogue, fetchNotifications]);
     } catch (err) {
       console.error("Failed to fetch fresh data from Express backend API:", err);
     }
