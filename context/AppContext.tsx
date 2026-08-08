@@ -87,22 +87,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (res.ok) setOrders(await res.json());
       }).catch(console.error);
 
-      const fetchCatalogue = fetch(`${API_URL}/api/catalog/download`).then(async (res) => {
-        if (res.ok) {
-          const catData = await res.json();
-          if (catData.success && catData.catalogBase64) {
-            setCatalogueDataState(catData.catalogBase64);
-            if (catData.fileName) setCatalogueFileNameState(catData.fileName);
-            if (catData.fileType) setCatalogueFileTypeState(catData.fileType);
-          }
-        }
-      }).catch(console.error);
-
       const fetchNotifications = fetch(`${API_URL}/api/notifications`).then(async (res) => {
         if (res.ok) setNotifications(await res.json());
       }).catch(console.error);
 
-      await Promise.all([fetchSettings, fetchProducts, fetchCustomers, fetchOrders, fetchCatalogue, fetchNotifications]);
+      await Promise.all([fetchSettings, fetchProducts, fetchCustomers, fetchOrders, fetchNotifications]);
     } catch (err) {
       console.error("Failed to fetch fresh data from Express backend API:", err);
     }

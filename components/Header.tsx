@@ -34,32 +34,14 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
     setIsMenuOpen(false);
   };
 
-  const downloadCatalogue = async () => {
+  const downloadCatalogue = () => {
     try {
-      if (catalogueData) {
-        const link = document.createElement('a');
-        link.href = catalogueData;
-        link.download = (context as any).catalogueFileName || 'AKM_Pharma_Catalog.pdf';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://akm-pharma-surgical-api.onrender.com';
-        const catRes = await fetch(`${API_URL}/api/catalog/download`);
-        if (catRes.ok) {
-          const catData = await catRes.json();
-          if (catData.success && catData.catalogBase64) {
-            const link = document.createElement('a');
-            link.href = catData.catalogBase64;
-            link.download = catData.fileName || 'AKM_Pharma_Catalog.pdf';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            return;
-          }
-        }
-        alert("No PDF catalogue uploaded by the admin yet.");
-      }
+      const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000' : 'https://akm-pharma-surgical-api.onrender.com';
+      const link = document.createElement('a');
+      link.href = `${API_URL}/api/catalog/file`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
       console.error("Error downloading catalogue:", error);
     }

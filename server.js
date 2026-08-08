@@ -159,6 +159,32 @@ app.get('/api/catalog/download', async (req, res) => {
   }
 });
 
+app.get('/api/catalog/file', async (req, res) => {
+  try {
+    const { data: base64Data } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_base64').maybeSingle();
+    const { data: nameData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_name').maybeSingle();
+    const { data: typeData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_type').maybeSingle();
+
+    if (!base64Data || !base64Data.setting_value) {
+      return res.status(404).send('No PDF catalogue uploaded by the admin yet.');
+    }
+
+    const base64String = base64Data.setting_value.includes(',') 
+      ? base64Data.setting_value.split(',')[1] 
+      : base64Data.setting_value;
+      
+    const buffer = Buffer.from(base64String, 'base64');
+    const fileName = nameData?.setting_value || 'AKM_Pharma_Catalog.pdf';
+    const fileType = typeData?.setting_value || 'application/pdf';
+
+    res.setHeader('Content-Type', fileType);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).send(error.message);
+  }
+});
+
 // ------------------------------------------------------------------------------
 // 2. PRODUCTS / STOCK API (SUPABASE & GOOGLE SHEETS SYNC)
 // ------------------------------------------------------------------------------
