@@ -120,6 +120,11 @@ app.get('/api/health', async (req, res) => {
 // 1.5 CATALOG MANAGEMENT API
 // ------------------------------------------------------------------------------
 
+let cachedCatalogBuffer = null;
+let cachedCatalogFileName = null;
+let cachedCatalogFileType = null;
+let isCacheLoaded = false;
+
 app.post('/api/catalog/upload', async (req, res) => {
   const { catalogBase64, fileName, fileType } = req.body;
   try {
@@ -127,10 +132,21 @@ app.post('/api/catalog/upload', async (req, res) => {
       await supabase.from('system_settings').upsert({ setting_key: 'catalog_base64', setting_value: catalogBase64 }, { onConflict: 'setting_key' });
       await supabase.from('system_settings').upsert({ setting_key: 'catalog_file_name', setting_value: fileName || 'AKM_Pharma_Catalog.pdf' }, { onConflict: 'setting_key' });
       await supabase.from('system_settings').upsert({ setting_key: 'catalog_file_type', setting_value: fileType || 'application/pdf' }, { onConflict: 'setting_key' });
+      
+      const base64String = catalogBase64.includes(',') ? catalogBase64.split(',')[1] : catalogBase64;
+      cachedCatalogBuffer = Buffer.from(base64String, 'base64');
+      cachedCatalogFileName = fileName || 'AKM_Pharma_Catalog.pdf';
+      cachedCatalogFileType = fileType || 'application/pdf';
+      isCacheLoaded = true;
     } else {
       await supabase.from('system_settings').delete().eq('setting_key', 'catalog_base64');
       await supabase.from('system_settings').delete().eq('setting_key', 'catalog_file_name');
       await supabase.from('system_settings').delete().eq('setting_key', 'catalog_file_type');
+      
+      cachedCatalogBuffer = null;
+      cachedCatalogFileName = null;
+      cachedCatalogFileType = null;
+      isCacheLoaded = true;
     }
     res.json({ success: true, message: 'Catalogue document updated successfully' });
   } catch (error) {
@@ -161,25 +177,31 @@ app.get('/api/catalog/download', async (req, res) => {
 
 app.get('/api/catalog/file', async (req, res) => {
   try {
-    const { data: base64Data } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_base64').maybeSingle();
-    const { data: nameData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_name').maybeSingle();
-    const { data: typeData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_type').maybeSingle();
+    if (!isCacheLoaded) {
+      const { data: base64Data } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_base64').maybeSingle();
+      const { data: nameData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_name').maybeSingle();
+      const { data: typeData } = await supabase.from('system_settings').select('setting_value').eq('setting_key', 'catalog_file_type').maybeSingle();
 
-    if (!base64Data || !base64Data.setting_value) {
+      if (base64Data && base64Data.setting_value) {
+        const base64String = base64Data.setting_value.includes(',') 
+          ? base64Data.setting_value.split(',')[1] 
+          : base64Data.setting_value;
+        cachedCatalogBuffer = Buffer.from(base64String, 'base64');
+        cachedCatalogFileName = nameData?.setting_value || 'AKM_Pharma_Catalog.pdf';
+        cachedCatalogFileType = typeData?.setting_value || 'application/pdf';
+      } else {
+        cachedCatalogBuffer = null;
+      }
+      isCacheLoaded = true;
+    }
+
+    if (!cachedCatalogBuffer) {
       return res.status(404).send('No PDF catalogue uploaded by the admin yet.');
     }
 
-    const base64String = base64Data.setting_value.includes(',') 
-      ? base64Data.setting_value.split(',')[1] 
-      : base64Data.setting_value;
-      
-    const buffer = Buffer.from(base64String, 'base64');
-    const fileName = nameData?.setting_value || 'AKM_Pharma_Catalog.pdf';
-    const fileType = typeData?.setting_value || 'application/pdf';
-
-    res.setHeader('Content-Type', fileType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.send(buffer);
+    res.setHeader('Content-Type', cachedCatalogFileType);
+    res.setHeader('Content-Disposition', `attachment; filename="${cachedCatalogFileName}"`);
+    res.send(cachedCatalogBuffer);
   } catch (error) {
     res.status(500).send(error.message);
   }
