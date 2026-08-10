@@ -254,14 +254,32 @@ const checkAndCreateLowStockNotification = async (productId, name, currentStock)
 
 app.get('/api/products', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('category', { ascending: true })
-      .order('name', { ascending: true });
+    let allData = [];
+    let from = 0;
+    const step = 999;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true })
+        .range(from, from + step);
 
-    if (error) throw error;
-    res.json(data || []);
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        allData = allData.concat(data);
+      }
+      
+      if (!data || data.length <= step) {
+        break; // Reached the end
+      }
+      
+      from += step + 1;
+    }
+
+    res.json(allData || []);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -375,33 +393,52 @@ app.post('/api/inventory/sync', async (req, res) => {
     let updatedCount = 0;
     
     if (inventoryData && inventoryData.length > 0) {
+      const formattedProducts = [];
       for (const item of inventoryData) {
         if (!item.code && !item.name) continue;
         
-        const rawCode = String(item.code || `AKM-${Date.now()}`).trim();
+        // If code is missing, derive it from the name to keep it consistent across syncs
+        const rawCode = String(item.code || item.name.replace(/[^a-zA-Z0-9]/g, '-').toUpperCase()).trim();
         const rawStock = parseInt(item.stock) || 0;
         const availStatus = rawStock <= 0 ? 'Out of Stock' : 'In Stock';
         const productName = item.name || 'Unknown Product';
         const itemPrice = parseFloat(item.price) || 0;
         
-        await supabase
-          .from('products')
-          .upsert({
-            id: rawCode,
-            code: rawCode,
-            name: productName,
-            manufacturer: item.manufacturer || 'AKM Pharma',
-            category: item.category || 'General',
-            mrp: parseFloat(item.mrp) || itemPrice,
-            price: itemPrice,
-            stock: rawStock,
-            availability: availStatus,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'code' });
-          
-        await checkAndCreateLowStockNotification(rawCode, productName, rawStock);
-        updatedCount++;
+        formattedProducts.push({
+          id: rawCode,
+          code: rawCode,
+          name: productName,
+          manufacturer: item.manufacturer || 'AKM Pharma',
+          category: item.category || 'General',
+          mrp: parseFloat(item.mrp) || itemPrice,
+          price: itemPrice,
+          stock: rawStock,
+          availability: availStatus,
+          updated_at: new Date().toISOString()
+        });
       }
+
+      // Deduplicate array by 'code' before bulk upsert to prevent Postgres transaction errors
+      const uniqueProductsMap = new Map();
+      for (const p of formattedProducts) {
+        uniqueProductsMap.set(p.code, p);
+      }
+      const uniqueFormattedProducts = Array.from(uniqueProductsMap.values());
+
+      // Execute a single bulk upsert for extreme speed and to avoid timeouts
+      const { error } = await supabase
+        .from('products')
+        .upsert(uniqueFormattedProducts, { onConflict: 'code' });
+
+      if (error) {
+        console.error('Supabase bulk upsert error:', error);
+        throw error;
+      }
+      
+      // Fire off notifications async
+      uniqueFormattedProducts.forEach(p => checkAndCreateLowStockNotification(p.code, p.name, p.stock).catch(console.error));
+      
+      updatedCount = uniqueFormattedProducts.length;
     }
     
     res.json({ success: true, message: `Synced ${updatedCount} products from Google Sheets.` });
