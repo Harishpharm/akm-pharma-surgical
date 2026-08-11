@@ -395,22 +395,26 @@ app.post('/api/inventory/sync', async (req, res) => {
     if (inventoryData && inventoryData.length > 0) {
       const formattedProducts = [];
       for (const item of inventoryData) {
-        if (!item.code && !item.name) continue;
+        const itemName = item.name || item['product name'] || item['product_name'];
+        if (!item.code && !itemName) continue;
         
         // If code is missing, derive it from the name to keep it consistent across syncs
-        const rawCode = String(item.code || item.name.replace(/[^a-zA-Z0-9]/g, '-').toUpperCase()).trim();
-        const rawStock = parseInt(item.stock) || 0;
+        const rawCode = String(item.code || itemName.replace(/[^a-zA-Z0-9]/g, '-').toUpperCase()).trim();
+        const rawStock = parseInt(item.stock || item.qty) || 0;
         const availStatus = rawStock <= 0 ? 'Out of Stock' : 'In Stock';
-        const productName = item.name || 'Unknown Product';
-        const itemPrice = parseFloat(item.price) || 0;
+        const productName = itemName || 'Unknown Product';
+        const itemPrice = parseFloat(item.price || item.mrp) || 0;
+        const itemMrp = parseFloat(item.mrp || item.price) || itemPrice;
+        const manufacturer = item.manufacturer || item['division name'] || item['division'] || item['brand'] || 'AKM Pharma';
+        const category = item.category || 'General';
         
         formattedProducts.push({
           id: rawCode,
           code: rawCode,
           name: productName,
-          manufacturer: item.manufacturer || 'AKM Pharma',
-          category: item.category || 'General',
-          mrp: parseFloat(item.mrp) || itemPrice,
+          manufacturer: manufacturer,
+          category: category,
+          mrp: itemMrp,
           price: itemPrice,
           stock: rawStock,
           availability: availStatus,
